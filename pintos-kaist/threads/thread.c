@@ -459,6 +459,13 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init(&t->donations);
+
+	// [*]2-B. 구조체 수정한거 초기화
+	list_init(&t->child_list);
+	t->self_child_info = NULL;
+	t->parent = NULL;
+	sema_init(&t->load_sema, 0);
+	t->load_success = false;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -738,7 +745,7 @@ void thread_preemption(void)
 	struct thread *now_running = thread_current();
 	struct list_elem *e = list_begin(&ready_list); // 여기서 list_front 쓰면 리스트 비어있을 때 못 얻어 오는 경우 생겨서 fail
 	struct thread *ready_head = list_entry(e, struct thread, elem);
-  
+
 	if (!list_empty(&ready_list) && (thread_current() != idle_thread) && (now_running->priority < ready_head->priority))
 	{
 		thread_yield();

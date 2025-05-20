@@ -115,6 +115,21 @@ struct thread
 	struct lock *wait_on_lock; //[*]1-2-3. release되기를 기다리고 있는 lock
 	struct list donations;	   //[*]1-2-3. 중요도 양도한 애 리스트
 	struct list_elem d_elem;   //[*]1-2-3. 중요도 양도한 애 관리(prev, next)
+
+	// [*]2. 부모-자식 프로세스 관리용
+	struct list child_list;				// 자식 프로세스 정보 리스트
+	struct child_info *self_child_info; // 나 자신의 child_info (부모가 접근함)
+	struct thread *parent;				// 나를 만든 부모 스레드
+};
+
+// [*]2. 부모-자식 프로세스 관리용
+struct child_info
+{
+	tid_t tid;					// 자식의 tid
+	int exit_status;			// 자식의 종료 코드
+	bool waited;				// 부모가 wait() 했는지 여부
+	struct semaphore wait_sema; // 부모-자식 동기화용 세마포어
+	struct list_elem elem;		// child_list에서 쓰일 리스트 요소
 };
 
 int64_t min_wakeup_tick; //[*]1-1. global tick 선언
