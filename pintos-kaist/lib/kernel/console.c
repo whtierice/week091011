@@ -141,10 +141,10 @@ puts (const char *s) {
 /* Writes the N characters in BUFFER to the console. */
 void
 putbuf (const char *buffer, size_t n) {
-	acquire_console ();
-	while (n-- > 0)
-		putchar_have_lock (*buffer++);
-	release_console ();
+	acquire_console ();  // 콘솔 전용 락(console_lock)을 획득
+	while (n-- > 0)  // 현재 n 값이랑 0 비교 후 1개 줄임
+		putchar_have_lock (*buffer++); // 버퍼가 가리키는 문자 꺼내고, 포인터가 다음 바이트로 이동
+	release_console (); // 락 해제
 }
 
 /* Writes C to the vga display and serial port. */
@@ -168,10 +168,11 @@ vprintf_helper (char c, void *char_cnt_) {
 /* Writes C to the vga display and serial port.
    The caller has already acquired the console lock if
    appropriate. */
+// K: 콘솔 락을 획득한 상태에서 글자 하나(c)를 출력함.
 static void
 putchar_have_lock (uint8_t c) {
-	ASSERT (console_locked_by_current_thread ());
-	write_cnt++;
-	serial_putc (c);
-	vga_putc (c);
+	ASSERT (console_locked_by_current_thread ()); // 쓰레드가 락을 잡고 있나? 검사
+	write_cnt++; // 지금까지 콘솔에 몇글자를 찍었는지 기록
+	serial_putc (c); // 직렬 포트 출력, 원격으로 로그를 모니터링 할 수 있음. (이해를 못함)
+	vga_putc (c); // 여기서 실제 모니터에 연결되 VGA 텍스트모드 버퍼에 글자를 렌더링함. - printf()
 }

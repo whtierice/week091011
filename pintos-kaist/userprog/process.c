@@ -30,6 +30,7 @@ static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
 static void __do_fork(void *);
+static bool push_stack_fr(struct intr_frame *if_);
 
 /* General process initializer for initd and other process. */
 static void
@@ -55,7 +56,11 @@ tid_t process_create_initd(const char *file_name)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
 
-	// file_name ="args-single"
+	char *save_ptr;
+
+
+	// file_name ="args-single onearg"
+	char* prog_name = strtok_r(file_name, " ", &save_ptr);
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -249,7 +254,9 @@ int process_exec(void *f_name)
 	success = load(file_name, &_if);
 
 	push_stack_fr(&_if);
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
+	// 레지스터에 main함수에서 쓰이는 첫번째 인자와 두번째 인자 전달.
+	// 주소값을 정수로 전달할 때, uint64_t를 사용. 
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
@@ -264,6 +271,7 @@ int process_exec(void *f_name)
 	// 그에 맞는 시스템 콜 핸들러 함수가 호출되고
 	// 그 핸들러가 요청을 적당히 처리하고(출력, 프로세스 관리 등) ㄱ결과를 사용자 프로그램에 반환한 뒤 사용자 모드로 복귀
 
+	// printf("before do_iret\n");
 	do_iret(&_if);
 	// do_iret가 호출된 이후로부턴 syscall.c에 구현된 syscall handler가 역할을 함.
 	NOT_REACHED();
@@ -283,6 +291,9 @@ int process_wait(tid_t child_tid UNUSED)
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	for (int i=0; i < 1000000000; i++){
+
+	}
 	return -1;
 }
 
@@ -506,7 +517,7 @@ load(const char *file_name, struct intr_frame *if_)
 
 	/* Start address. */
 	// 프로그램 카운터
-	//if_->rip = ehdr.e_entry;
+	if_->rip = ehdr.e_entry;
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
@@ -596,11 +607,12 @@ static bool push_stack_fr(struct intr_frame *if_){
 		memcpy(if_->rsp, &addrs_argv[i], sizeof(uintptr_t));
 	}
 
+	if_->R.rsi = if_->rsp;
 	// 규약상 필요한 주소에 가짜주소 채워넣기
 	if_->rsp -= sizeof(uintptr_t);
 	memset(if_->rsp, 0, sizeof(uintptr_t));
 
-	return true
+	return true;
 }
 
 #ifndef VM
